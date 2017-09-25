@@ -56,14 +56,13 @@ func main() {
 		HostKeyCallback: callback,
 	}
 
+	// probably want to open this on a per request level
 	client, err := ssh.Dial("tcp", "138.68.203.191:22", sshConf)
 	if err != nil {
 		fmt.Println("could not Dial via ssh the host: ", err)
 		os.Exit(1)
 	}
 	defer client.Close()
-
-	fmt.Println("at some point we successfully dialed the host")
 
 	// Construct HTTP proxy using the dialed client
 	url, err := url.Parse("http://localhost:1080")
