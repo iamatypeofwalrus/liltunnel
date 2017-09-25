@@ -8,20 +8,40 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"os/user"
+	"path"
 	"time"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
+
+	flags "github.com/jessevdk/go-flags"
 )
 
 const (
-	confFile  = ".liltunnel"
-	cacheFile = ".liltunnel-cache.json"
+	confFile       = ".liltunnel"
+	cacheFile      = ".liltunnel-cache.json"
+	knownHostsFile = "known_hosts"
 )
 
+type options struct {
+	Port           string `long:"port" short:"p" required:"true" description:"all traffic from local host will be sent to this port on foreign host"`
+	Host           string `long:"host-name" short:"n" required:"true" description:"valid DNS name or IP address"`
+	User           string `long:"user" short:"u" required:"false" description:"DEFAULT: current user name. user name used to ssh into the host."`
+	SSHKeyPath     string `long:"ssh-key" short:"k" required:"true" description:"path to the private key to be used when establishing a connection to the host"`
+	KnownHostsPath string //`long:"known-hosts" short:"n" required:"false"`
+	// Cache     bool   `long:"cache" short:"c"`
+}
+
 func main() {
-	// todo configurable
-	key, err := ioutil.ReadFile("/Users/joe/.ssh/digital_ocean_rsa")
+	opts := options{}
+	_, err := flags.Parse(&opts)
+	if err != nil {
+		fmt.Println("could not parse arguments: ", err)
+		os.Exit(1)
+	}
+
+	key, err := ioutil.ReadFile(opts.SSHKeyPath)
 	if err != nil {
 		fmt.Println("could not open key file: ", err)
 		os.Exit(1)
@@ -33,27 +53,50 @@ func main() {
 		os.Exit(1)
 	}
 
-	// todo configurable
-	callback, err := knownhosts.New("/Users/joe/.ssh/known_hosts")
+	var knownHostsPath string
+	if opts.KnownHostsPath == "" {
+		u, err := user.Current()
+		if err != nil {
+			fmt.Println("could not get current user: ", err)
+			os.Exit(1)
+		}
+		knownHostsPath = path.Join(u.HomeDir, ".ssh", knownHostsFile)
+
+	} else {
+		knownHostsPath = opts.KnownHostsPath
+	}
+
+	callback, err := knownhosts.New(knownHostsPath)
 	if err != nil {
-		fmt.Println("could not create knownhosts")
+		fmt.Println("could not create knownhosts callback: ", err)
 		os.Exit(1)
 	}
 
+	var sshUser string
+	if opts.User == "" {
+		u, err := user.Current()
+		if err != nil {
+			fmt.Println("could not get current user: ", err)
+			os.Exit(1)
+		}
+
+		sshUser = u.Username
+	} else {
+		sshUser = opts.User
+	}
 	sshConf := &ssh.ClientConfig{
-		User: "root",
+		User: sshUser,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
 		HostKeyCallback: callback,
 	}
 
-	// todo configurable
-	d := &dialer{clientConfig: sshConf, host: "138.68.203.191"}
+	d := &dialer{clientConfig: sshConf, host: opts.Host}
 
-	// todo configurable (port)
-	// Construct HTTP proxy using the dialed client
-	url, err := url.Parse("http://localhost:1080")
+	url, err := url.Parse(
+		fmt.Sprintf("http://localhost:%v", opts.Port),
+	)
 	if err != nil {
 		fmt.Println("could not parse url: ", err)
 		os.Exit(1)
@@ -70,7 +113,6 @@ func main() {
 	rp.Transport = t
 
 	// use this cache: https://github.com/lox/httpcache
-	// todo configurable (port)
-	log.Println("Listening :1080")
-	log.Fatal(http.ListenAndServe(":1080", rp))
+	log.Println("listening on", opts.Port)
+	log.Fatal(http.ListenAndServe(":"+opts.Port, rp))
 }
