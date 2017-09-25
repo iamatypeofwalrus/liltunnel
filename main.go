@@ -22,24 +22,21 @@ const (
 	confFile       = ".liltunnel"
 	cacheFile      = ".liltunnel-cache.json"
 	knownHostsFile = "known_hosts"
+	usage          = "--port 1080 --host-name the.best.example.com --ssh-key ~/.ssh/liltunnel_rsa"
 )
 
 type options struct {
-	Port           string `long:"port" short:"p" required:"true" description:"all traffic from local host will be sent to this port on foreign host"`
+	Port           string `long:"port" short:"p" required:"true" description:"all traffic from this port on localhost will be sent to the same port on the foreign host"`
 	Host           string `long:"host-name" short:"n" required:"true" description:"valid DNS name or IP address"`
-	User           string `long:"user" short:"u" required:"false" description:"DEFAULT: current user name. user name used to ssh into the host."`
 	SSHKeyPath     string `long:"ssh-key" short:"k" required:"true" description:"path to the private key to be used when establishing a connection to the host"`
-	KnownHostsPath string //`long:"known-hosts" short:"n" required:"false"`
-	// Cache     bool   `long:"cache" short:"c"`
+	User           string `long:"user" short:"u" required:"false" description:"DEFAULT: current posix user name. User used to SSH into the foreign host"`
+	KnownHostsPath string `long:"known-hosts" short:"o" required:"false" description:"DEFAULT: ~/.ssh/known_hosts. Path to known hosts file"`
+	Verbose        bool   `long:"verbose" short:"v" description:"DEFAULT: false. Peak under the hood"`
+	Cache          bool
 }
 
 func main() {
-	opts := options{}
-	_, err := flags.Parse(&opts)
-	if err != nil {
-		fmt.Println("could not parse arguments: ", err)
-		os.Exit(1)
-	}
+	opts := parseArgs()
 
 	key, err := ioutil.ReadFile(opts.SSHKeyPath)
 	if err != nil {
@@ -92,7 +89,8 @@ func main() {
 		HostKeyCallback: callback,
 	}
 
-	d := &dialer{clientConfig: sshConf, host: opts.Host}
+	d := &dialer{clientConfig: sshConf, host: opts.Host, verbose: opts.Verbose}
+	fmt.Printf("%+v\n", d)
 
 	url, err := url.Parse(
 		fmt.Sprintf("http://localhost:%v", opts.Port),
@@ -113,6 +111,30 @@ func main() {
 	rp.Transport = t
 
 	// use this cache: https://github.com/lox/httpcache
-	log.Println("listening on", opts.Port)
+	if opts.Verbose {
+		log.Println("listening on", opts.Port)
+	}
 	log.Fatal(http.ListenAndServe(":"+opts.Port, rp))
+}
+
+func parseArgs() options {
+	p := flags.NewNamedParser("liltunnel", flags.HelpFlag)
+	p.Usage = usage
+
+	opts := options{}
+	_, err := p.AddGroup("Options", "", &opts)
+	if err != nil {
+		panic(
+			fmt.Sprintf("could not add application options to group: %v", err),
+		)
+	}
+
+	_, err = p.ParseArgs(os.Args)
+	if err != nil {
+		fmt.Printf("%v\n\n", err)
+		p.WriteHelp(os.Stdout)
+		os.Exit(1)
+	}
+
+	return opts
 }
