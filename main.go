@@ -19,17 +19,8 @@ const (
 	cacheFile = ".liltunnel-cache.json"
 )
 
-// Tunnel strategy
-// create a closure that can use SSH inputs and returns a
-// DialContext func(ctx context.Context, network, addr string) (net.Conn, error)
-// Copy the http.DefaultTransport init and pass it to the HTTP server
-//
-// use transport in http.RoundTripper
-//
-// This may be fine for reverse proxy, but can it cache responses?
-//
-// possilby use this inconjuction with https://github.com/lox/httpcache
 func main() {
+	// todo configurable
 	key, err := ioutil.ReadFile("/Users/joe/.ssh/digital_ocean_rsa")
 	if err != nil {
 		fmt.Println("could not open key file: ", err)
@@ -42,6 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// todo configurable
 	callback, err := knownhosts.New("/Users/joe/.ssh/known_hosts")
 	if err != nil {
 		fmt.Println("could not create knownhosts")
@@ -56,14 +48,10 @@ func main() {
 		HostKeyCallback: callback,
 	}
 
-	// probably want to open this on a per request level
-	client, err := ssh.Dial("tcp", "138.68.203.191:22", sshConf)
-	if err != nil {
-		fmt.Println("could not Dial via ssh the host: ", err)
-		os.Exit(1)
-	}
-	defer client.Close()
+	// todo configurable
+	d := &dialer{clientConfig: sshConf, host: "138.68.203.191"}
 
+	// todo configurable (port)
 	// Construct HTTP proxy using the dialed client
 	url, err := url.Parse("http://localhost:1080")
 	if err != nil {
@@ -77,10 +65,12 @@ func main() {
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
-		Dial: client.Dial,
+		DialContext:           d.DialContext,
 	}
 	rp.Transport = t
 
+	// use this cache: https://github.com/lox/httpcache
+	// todo configurable (port)
 	log.Println("Listening :1080")
 	log.Fatal(http.ListenAndServe(":1080", rp))
 }
