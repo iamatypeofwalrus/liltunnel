@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/jessevdk/go-flags"
+  packages = ["."]
+  revision = "96dc06278ce32a0e9d957d590bb987c81ee66407"
+  version = "v1.3.0"
+
+[[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
@@ -16,6 +22,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0ea601568478ef816094805b5ca6fa985dd341c975b4e6568f7ff4ffc1b849fb"
+  inputs-digest = "67fb9b149b48bda1ad15121b458c75ab7a71d17b4234be5ea6a4b74ee1150619"
   solver-name = "gps-cdcl"
   solver-version = 1
