@@ -1,5 +1,5 @@
 # Lil' HTTP Tunnel
-Just a simple, little HTTP proxy over an SSH tunnel
+Just a simple, little TCO / hTTP proxy over an SSH tunnel
 
 ## So you need to setup paswordless access to your server
 ### Generate an SSH Key for liltunnel
@@ -35,4 +35,19 @@ As a smoke test you can run something like the following, or run something else
 that makes an HTTP request to 2009
 ```
 curl -v http://localhost:2009
+```
+
+## CLI API
+```
+liltunnel --local-host-port 1080 \
+          --remote-host-port 1081 \
+          --remote-host-user-name root \
+          --remote-host-name the.best.example.com \
+          --ssh-key ~/.ssh/liltunnel_rsa \
+          --protocol-http \
+          --http-cache-responses
+
+liltunnel -p 1080 -h example.com --protocol-http --http-cache-responses
+liltunnel --port-mapping 1080:1080 --remotehost root@example.com
+liltunnel -p 1080:1080 -h root@example.com -k ~/.ssh/liltunnel_rsa
 ```
