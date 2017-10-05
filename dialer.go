@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 
 	"github.com/pkg/errors"
@@ -22,8 +21,8 @@ type Dialer interface {
 // that expects that function signature.
 //
 // This dialer creates a connection to the remote machine over SSH.
-func NewDialer(sshKeyPath string, knownHostsPath string, sshUserName string, host string, verbose bool) (Dialer, error) {
-	key, err := ioutil.ReadFile(sshKeyPath)
+func NewDialer(sshKey string, known string, username string, host string, l logger) (Dialer, error) {
+	key, err := ioutil.ReadFile(sshKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not open key file")
 	}
@@ -33,20 +32,20 @@ func NewDialer(sshKeyPath string, knownHostsPath string, sshUserName string, hos
 		return nil, errors.Wrap(err, "could not parse private key")
 	}
 
-	callback, err := knownhosts.New(knownHostsPath)
+	callback, err := knownhosts.New(known)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create knownhosts callback")
 	}
 
 	sshConf := &ssh.ClientConfig{
-		User: sshUserName,
+		User: username,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
 		HostKeyCallback: callback,
 	}
 
-	return &dialer{clientConfig: sshConf, host: host, verbose: verbose}, nil
+	return &dialer{clientConfig: sshConf, host: host, log: l}, nil
 }
 
 // Dialer is a wrapper around a DialContext func that dials remote machines over
@@ -54,15 +53,14 @@ func NewDialer(sshKeyPath string, knownHostsPath string, sshUserName string, hos
 type dialer struct {
 	clientConfig *ssh.ClientConfig
 	host         string
-	verbose      bool
+	log          logger
 }
 
 // DialContext matches the signature of net.DialContext and can be used anywhere
 // that expectes a net.DialContext func
 func (d *dialer) DialContext(ctx context.Context, n, addr string) (net.Conn, error) {
-	if d.verbose {
-		log.Println("dialing host via SSH on port 22")
-	}
+	d.log.Println("dialing host via SSH on port 22")
+
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%v:22", d.host), d.clientConfig)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not open connection to %v on port 22", d.host)
@@ -73,8 +71,6 @@ func (d *dialer) DialContext(ctx context.Context, n, addr string) (net.Conn, err
 		return nil, errors.Wrap(err, "failed dialing the remote server")
 	}
 
-	if d.verbose {
-		log.Println("passing SSH connection to HTTP server")
-	}
-	return &conn{c, client, d.verbose}, nil
+	d.log.Println("passing SSH connection")
+	return &conn{c, client, d.log}, nil
 }

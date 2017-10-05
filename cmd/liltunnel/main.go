@@ -17,7 +17,7 @@ const (
 	cacheFile      = ".liltunnel.cache"
 	knownHostsFile = "known_hosts"
 	sshKey         = "id_rsa"
-	usage          = "-p 80:8080 --remote me@remote.example.com --ssh-key ~/.ssh/liltunnel_rsa --protocol http"
+	usage          = "-p 80:8080 --remote me@remote.example.com --ssh-key ~/.ssh/liltunnel_rsa"
 )
 
 // options represents the raw cli options exposed to the user
@@ -43,8 +43,6 @@ type config struct {
 	verbose    bool
 }
 
-// TODO: save options to .liltunnel.conf and pick those up if liltunnel is run
-//       without arguments again
 func main() {
 	conf, err := newConf()
 	if err != nil {
@@ -58,14 +56,12 @@ func main() {
 		log.Lshortfile,
 	)
 
-	l.Printf("config: %+v", conf)
-
 	d, err := liltunnel.NewDialer(
 		conf.sshKeyPath,
 		conf.knownHosts,
 		conf.user,
 		conf.remote,
-		conf.verbose,
+		l,
 	)
 	if err != nil {
 		fmt.Println("could not init dialer", err)
@@ -76,13 +72,21 @@ func main() {
 	if conf.protocol == "http" {
 		t, err = liltunnel.NewHTTPTunnler(d, conf.localPort, conf.remotePort, l)
 	} else {
-		t, err = liltunnel.NewTCPTunneler(d, conf.localPort, conf.remotePort, l)
+		t, err = liltunnel.NewTCPTunneler(d, ":2009", ":2009", l)
 	}
 	if tunnelErr != nil {
 		fmt.Fprintf(os.Stderr, "could not initalize tunnel: %v", err)
 		os.Exit(1)
 	}
 
+	l.Printf(
+		"forwarding all %v traffic sent to localhost%v to %v@%v%v",
+		conf.protocol,
+		conf.localPort,
+		conf.user,
+		conf.remote,
+		conf.remotePort,
+	)
 	l.Fatal(t.Tunnel())
 }
 
@@ -97,7 +101,7 @@ func newConf() (config, error) {
 
 	// PortMapping can look like "8080:80" or "8080". In the later case we implicitly
 	// forward set the remote port to the same as local
-	ports := strings.SplitN(opts.PortMapping, ":", 1)
+	ports := strings.SplitN(opts.PortMapping, ":", 2)
 	if len(ports) == 1 {
 		conf.localPort = ":" + ports[0]
 		conf.remotePort = ":" + ports[0]
@@ -137,6 +141,12 @@ func newConf() (config, error) {
 		)
 	} else {
 		conf.knownHosts = opts.KnownHostsPath
+	}
+
+	if opts.Protocol == "" {
+		conf.protocol = "tcp"
+	} else {
+		conf.protocol = opts.Protocol
 	}
 
 	// All the rest

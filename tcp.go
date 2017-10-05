@@ -47,9 +47,14 @@ func (t *tcp) Tunnel() error {
 }
 
 func (t *tcp) handle(local net.Conn) {
-	remote, err := t.dialer.DialContext(context.Background(), "tcp", t.remotePort)
+	remote, err := t.dialer.DialContext(
+		context.Background(),
+		"tcp",
+		"localhost"+t.remotePort,
+	)
 	if err != nil {
 		t.log.Println("could not dial remote server:", err)
+		local.Close()
 		return
 	}
 

@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TODO: add file cache
+
 // NewHTTPTunnler returns an HTTP only Tunneler. You can configure the HTTP
 // tunneler to cache HTTP responses out to disk. Which can be _pretty_
 // handy in the right scenario.
@@ -32,20 +34,11 @@ type httpTunnel struct {
 }
 
 func (h *httpTunnel) Tunnel() error {
-	rp, err := h.constructProxy()
-	if err != nil {
-		return err
-	}
-
-	return http.ListenAndServe(":"+h.localPort, rp)
-}
-
-func (h *httpTunnel) constructProxy() (*httputil.ReverseProxy, error) {
 	url, err := url.Parse(
-		fmt.Sprintf("http://localhost:%v", h.remotePort),
+		fmt.Sprintf("http://localhost%v", h.localPort),
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not parse url")
+		return errors.Wrap(err, "could not parse url")
 	}
 	rp := httputil.NewSingleHostReverseProxy(url)
 	t := &http.Transport{
@@ -58,5 +51,5 @@ func (h *httpTunnel) constructProxy() (*httputil.ReverseProxy, error) {
 	}
 	rp.Transport = t
 
-	return rp, nil
+	return http.ListenAndServe(h.localPort, rp)
 }
