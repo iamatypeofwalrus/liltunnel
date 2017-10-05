@@ -177,25 +177,3 @@ func parseArgs() options {
 
 	return opts
 }
-
-// setDefaults accepts an options struct and sets the default paramaters
-// to valid values
-// func setDefaults(opts options) options {
-// 	currUser, err := user.Current()
-// 	if err != nil {
-// 		// TODO: would be nice to keep everything that can terminate the program
-// 		//       in the main function
-// 		fmt.Println("could not get current user", err)
-// 		os.Exit(1)
-// 	}
-
-// 	if opts.KnownHostsPath == "" {
-// 		opts.KnownHostsPath = path.Join(currUser.HomeDir, ".ssh", knownHostsFile)
-// 	}
-
-// 	if opts.User == "" {
-// 		opts.User = currUser.Username
-// 	}
-
-// 	return opts
-// }
