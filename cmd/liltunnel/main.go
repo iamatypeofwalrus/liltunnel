@@ -17,7 +17,7 @@ const (
 	cacheFile      = ".liltunnel.cache"
 	knownHostsFile = "known_hosts"
 	sshKey         = "id_rsa"
-	usage          = "-p 80:8080 --remote me@remote.example.com --ssh-key ~/.ssh/liltunnel_rsa"
+	usage          = "--port-mapping 80:8080 --remote me@remote.example.com --identity ~/.ssh/liltunnel_rsa"
 )
 
 // options represents the raw cli options exposed to the user
