@@ -58,7 +58,8 @@ func (t *tcp) handle(local net.Conn) {
 		return
 	}
 
-	// Error handling?
+	// TODO: Error handling?
+	// TODO: when should the remote connection be closed?
 	go io.Copy(local, remote)
 	go io.Copy(remote, local)
 }
