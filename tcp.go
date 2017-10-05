@@ -8,19 +8,28 @@ import (
 	"github.com/pkg/errors"
 )
 
-// NewTCPTunneler constructs a tunnler that handles any kind of TCP traffic
-func NewTCPTunneler() (Tunneler, error) {
-	return &tcp{}, nil
+// NewTCPTunneler constructs a tunnler that handles all TCP traffic from localPort
+// to remotePort using the given Dialer to establish the connection between the
+// two machines.
+func NewTCPTunneler(d Dialer, localPort string, remotePort string, l logger) (Tunneler, error) {
+	t := &tcp{
+		dialer:     d,
+		localPort:  localPort,
+		remotePort: remotePort,
+		log:        l,
+	}
+	return t, nil
 }
 
 type tcp struct {
-	address string
-	log     Logger
-	dialer  Dialer
+	log        logger
+	dialer     Dialer
+	localPort  string
+	remotePort string
 }
 
 func (t *tcp) Tunnel() error {
-	l, err := net.Listen("tcp", t.address)
+	l, err := net.Listen("tcp", t.localPort)
 	if err != nil {
 		t.log.Println("could not start listener:", err)
 		return errors.Wrap(err, "could start listener")
@@ -38,7 +47,7 @@ func (t *tcp) Tunnel() error {
 }
 
 func (t *tcp) handle(local net.Conn) {
-	remote, err := t.dialer.DialContext(context.Background(), "tcp", t.address)
+	remote, err := t.dialer.DialContext(context.Background(), "tcp", t.remotePort)
 	if err != nil {
 		t.log.Println("could not dial remote server:", err)
 		return

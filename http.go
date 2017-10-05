@@ -13,7 +13,7 @@ import (
 // NewHTTPTunnler returns an HTTP only Tunneler. You can configure the HTTP
 // tunneler to cache HTTP responses out to disk. Which can be _pretty_
 // handy in the right scenario.
-func NewHTTPTunnler(dialer Dialer, localPort string, remotePort string, log Logger) (Tunneler, error) {
+func NewHTTPTunnler(dialer Dialer, localPort string, remotePort string, log logger) (Tunneler, error) {
 	h := &httpTunnel{
 		dialer:     dialer,
 		localPort:  localPort,
@@ -25,7 +25,7 @@ func NewHTTPTunnler(dialer Dialer, localPort string, remotePort string, log Logg
 
 type httpTunnel struct {
 	dialer     Dialer
-	log        Logger
+	log        logger
 	localPort  string
 	remotePort string
 	cache      bool

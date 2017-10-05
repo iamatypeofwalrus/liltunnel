@@ -1,20 +1,31 @@
 # Lil' HTTP Tunnel
-Just a simple, little TCO / hTTP proxy over an SSH tunnel
+Just a simple, little TCP / HTTP proxy over an SSH.
 
-## So you need to setup paswordless access to your server
+## TCP AND HTTP?!?
+Yes. You and I both know that HTTP runs on top of TCP. By interacting at the `HTTP`
+level `liltunnel` can cache HTTP responses to disk. I find this pretty
+handy. If you can't find an obvious use case for this in your normal workflow,
+just stick with the `TCP` mode.
+
+## Setup passwordless access to your server
 ### Generate an SSH Key for liltunnel
 ```sh
-ssh-keygen -t rsa -b 4096 -C "your_email@example.com" -P "" -f ~/.ssh/liltunnel_rsa
+MY_EMAIL=...
+ssh-keygen -t rsa -b 4096 -C "$MY_EMAIL" -P "" -f ~/.ssh/liltunnel_rsa
 ```
 ### Copy your public key to your server
-In order to SSH with a public key you'll need to add `liltunnel_rsa.pub` to
+In order to SSH with a public key you'll need to add `~/.ssh/liltunnel_rsa.pub` to
 `~/.ssh/authorized_keys` on your server
 
 ```sh
 cat ~/.ssh/liltunnel_rsa.pub | pbcopy
 
+
 # SSH into your server
-cd ~/.ssh
+ssh ...
+
+# From your remote machine
+mkdir -p ~/.ssh
 
 # If authorized_keys does not exist run the following
 touch authorized_keys 

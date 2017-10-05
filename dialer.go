@@ -70,7 +70,7 @@ func (d *dialer) DialContext(ctx context.Context, n, addr string) (net.Conn, err
 
 	c, err := client.Dial(n, addr)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed dialing the remote server")
 	}
 
 	if d.verbose {
