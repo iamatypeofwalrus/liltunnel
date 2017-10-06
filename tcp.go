@@ -58,8 +58,12 @@ func (t *tcp) handle(local net.Conn) {
 		return
 	}
 
-	// TODO: Error handling?
-	// TODO: when should the remote connection be closed?
 	go io.Copy(local, remote)
-	go io.Copy(remote, local)
+	go func(remote, local net.Conn) {
+		_, err := io.Copy(remote, local)
+		if err != nil {
+			t.log.Println("an error occurred when copying from remote to local:", err)
+		}
+		remote.Close()
+	}(remote, local)
 }

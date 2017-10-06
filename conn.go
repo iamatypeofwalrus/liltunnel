@@ -6,8 +6,10 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// conn exists as a wrapper struct so when http.Server calls Close() it will close the SSH connection and
-// the original net.Conn
+// conn exists as a wrapper struct around the ssh connection so when the consuming
+// go routine has finished with the connection we also close the underlying ssh
+// connection. This stops us from leaking SSH connections everytime a request
+// is made.
 type conn struct {
 	net.Conn
 	client *ssh.Client
@@ -16,8 +18,8 @@ type conn struct {
 
 func (c *conn) Close() error {
 	c.log.Println("conn received Close()")
-	// and with this hacky method both connections will wind up closed
-	// returning the net.Conn error as that is what _normally_ happens.
+	// We're not really that interested in what the SSH connection has to say
+	// when we close it so let's return the net.Conn's error message, if any.
 	defer c.client.Close()
 	return c.Conn.Close()
 }
