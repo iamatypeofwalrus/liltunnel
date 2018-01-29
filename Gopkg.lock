@@ -16,8 +16,8 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
-  packages = ["curve25519","ed25519","ed25519/internal/edwards25519","ssh","ssh/knownhosts"]
-  revision = "847319b7fc94cab682988f93da778204da164588"
+  packages = ["curve25519","ed25519","ed25519/internal/edwards25519","internal/chacha20","poly1305","ssh","ssh/knownhosts"]
+  revision = "1875d0a70c90e57f11972aefd42276df65e895b9"
 
 [solve-meta]
   analyzer-name = "dep"
