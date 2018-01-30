@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -13,40 +14,46 @@ import (
 )
 
 const (
-	confFile       = ".liltunnel.conf"
-	cacheFile      = ".liltunnel.cache"
 	knownHostsFile = "known_hosts"
 	sshKey         = "id_rsa"
 	usage          = "--port-mapping 80:8080 --remote me@remote.example.com --identity ~/.ssh/liltunnel_rsa"
+	protocolHTTP   = "http"
+	protocolTCP    = "tcp"
 )
 
 // options represents the raw cli options exposed to the user
 type options struct {
-	PortMapping    string `long:"port-mapping" short:"p" required:"true" description:"local:remote or port. If remote is not specified local port is used"`
-	Remote         string `long:"remote" short:"r" required:"true" description:"username@remote.example.com or remote.example.com. If username is not specified the current $USER is used"`
-	SSHKeyPath     string `long:"identity" short:"i" required:"true" description:"private key to be used when establishing a connection to the remote (default: ~/.ssh/id_rsa)"`
-	KnownHostsPath string `long:"known-hosts" short:"o" required:"false" description:"known hosts file (default: ~/.ssh/known_hosts)"`
-	Protocol       string `long:"protocol" short:"n" required:"false" description:"network protocol to use when tunneling" default:"tcp" choice:"http" choice:"tcp"`
-	Verbose        bool   `long:"verbose" short:"v"`
+	PortMapping         string `long:"port-mapping" short:"p" required:"true" description:"local:remote or port. If remote is not specified local port is used"`
+	Remote              string `long:"remote" short:"r" required:"true" description:"username@remote.example.com or remote.example.com. If username is not specified the current $USER is used"`
+	SSHKeyPath          string `long:"identity" short:"i" required:"true" description:"private key to be used when establishing a connection to the remote (default: ~/.ssh/id_rsa)"`
+	KnownHostsPath      string `long:"known-hosts" short:"o" required:"false" description:"known hosts file (default: ~/.ssh/known_hosts)"`
+	Protocol            string `long:"protocol" short:"n" required:"false" description:"network protocol to use when tunneling" default:"tcp" choice:"http" choice:"tcp"`
+	HTTPCache           bool   `long:"http-cache" short:"c" description:"HTTP only. When enabled liltunnel will cache succesful response to disk"`
+	HTTPCacheTTL        int64  `long:"http-cache-ttl" short:"t" description:"HTTP only. Length of time to keep successful responses in cache. Defaults to '3600'. Set to '0' to never refresh"`
+	HTTPCacheServeStale bool   `long:"http-cache-serve-stale" short:"s" description:"HTTP only. Always return return a stale read from the cache. Handy if you need an offline mode"`
+	Verbose             bool   `long:"verbose" short:"v"`
 }
 
 // config holds all of the parsed and default values sanely set from the options
 // the user provided.
 type config struct {
-	sshKeyPath string
-	user       string
-	localPort  string
-	remotePort string
-	remote     string
-	knownHosts string
-	protocol   string
-	verbose    bool
+	sshKeyPath          string
+	user                string
+	localPort           string
+	remotePort          string
+	remote              string
+	knownHosts          string
+	protocol            string
+	httpCache           bool
+	httpCacheTTL        int64
+	httpCacheServeStale bool
+	verbose             bool
 }
 
 func main() {
 	conf, err := newConf()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not create config from CLI options: %v", err)
+		fmt.Fprintf(os.Stderr, "could not parse CLI options: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -63,17 +70,30 @@ func main() {
 		conf.remote,
 		l,
 	)
+
 	if err != nil {
 		fmt.Println("could not init dialer", err)
 		os.Exit(1)
 	}
+
 	var t liltunnel.Tunneler
 	var tunnelErr error
 	if conf.protocol == "http" {
-		t, err = liltunnel.NewHTTPTunnler(d, conf.localPort, conf.remotePort, l)
+		l.Printf("initalizing http tunnler")
+		t, err = liltunnel.NewHTTPTunnler(
+			d,
+			conf.localPort,
+			conf.remotePort,
+			conf.httpCache,
+			conf.httpCacheTTL,
+			conf.httpCacheServeStale,
+			l,
+		)
 	} else {
+		l.Printf("initalizing tcp tunnler")
 		t, err = liltunnel.NewTCPTunneler(d, ":2009", ":2009", l)
 	}
+
 	if tunnelErr != nil {
 		fmt.Fprintf(os.Stderr, "could not initalize tunnel: %v", err)
 		os.Exit(1)
@@ -143,14 +163,18 @@ func newConf() (config, error) {
 		conf.knownHosts = opts.KnownHostsPath
 	}
 
-	if opts.Protocol == "" {
-		conf.protocol = "tcp"
-	} else {
-		conf.protocol = opts.Protocol
+	conf.protocol = opts.Protocol
+	if conf.protocol == protocolTCP && (opts.HTTPCache || opts.HTTPCacheTTL != int64(0) || opts.HTTPCacheServeStale) {
+		return conf, errors.New("protocol TCP does not accept arguments http-cache, http-cache-ttl, http-cache-serve-stale")
+	}
+
+	if opts.Protocol == protocolHTTP {
+		conf.httpCache = opts.HTTPCache
+		conf.httpCacheTTL = opts.HTTPCacheTTL
+		conf.httpCacheServeStale = opts.HTTPCacheServeStale
 	}
 
 	// All the rest
-	conf.protocol = opts.Protocol
 	conf.verbose = opts.Verbose
 
 	return conf, nil

@@ -10,27 +10,34 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TODO: add file cache
+const (
+	flushPeriod = 10 * time.Second
+)
 
 // NewHTTPTunnler returns an HTTP only Tunneler. You can configure the HTTP
 // tunneler to cache HTTP responses out to disk. Which can be _pretty_
 // handy in the right scenario.
-func NewHTTPTunnler(dialer Dialer, localPort string, remotePort string, log logger) (Tunneler, error) {
+func NewHTTPTunnler(dialer Dialer, localPort string, remotePort string, cache bool, ttl int64, serveStale bool, log logger) (Tunneler, error) {
 	h := &httpTunnel{
-		dialer:     dialer,
-		localPort:  localPort,
-		remotePort: remotePort,
-		log:        log,
+		dialer:          dialer,
+		localPort:       localPort,
+		remotePort:      remotePort,
+		log:             log,
+		cache:           cache,
+		cacheTTL:        ttl,
+		cacheServeStale: serveStale,
 	}
 	return h, nil
 }
 
 type httpTunnel struct {
-	dialer     Dialer
-	log        logger
-	localPort  string
-	remotePort string
-	cache      bool
+	dialer          Dialer
+	log             logger
+	localPort       string
+	remotePort      string
+	cache           bool
+	cacheTTL        int64
+	cacheServeStale bool
 }
 
 func (h *httpTunnel) Tunnel() error {
@@ -49,7 +56,19 @@ func (h *httpTunnel) Tunnel() error {
 		ExpectContinueTimeout: 1 * time.Second,
 		DialContext:           h.dialer.DialContext,
 	}
-	rp.Transport = t
 
-	return http.ListenAndServe(h.localPort, rp)
+	rp.Transport = t
+	// Cast ReverseProxy as an HTTP handler so we can wrap it with the cache
+	handler := http.Handler(rp)
+	if h.cache {
+		h.log.Println("initializing http cache")
+		c, err := newHTTPCache("", h.log)
+		if err != nil {
+			return err
+		}
+
+		handler = c.Handle(handler)
+	}
+
+	return http.ListenAndServe(h.localPort, handler)
 }
