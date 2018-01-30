@@ -1,11 +1,31 @@
-# Lil' HTTP Tunnel
-Just a simple, little TCP / HTTP proxy over an SSH.
+# Lil' TCP / HTTP Tunnel over SSH
+Lil' Tunnel is a simple CLI application for proxying TCP / HTTP requests over SSH.
 
 ## TCP AND HTTP?!?
 Yes. You and I both know that HTTP runs on top of TCP. By interacting at the `HTTP`
 level `liltunnel` can cache HTTP responses to disk. I find this pretty
-handy. If you can't find an obvious use case for this in your normal workflow,
-just stick with the `TCP` mode.
+handy when I need a quasi-offline mode. If you don't need this feature `liltunnel` happily defaults to `tcp`
+like any normal SSH tunnel.
+
+## CLI Args
+```
+Usage:
+  liltunnel --port-mapping 80:8080 --remote me@remote.example.com --identity ~/.ssh/liltunnel_rsa
+
+Options:
+  -p, --port-mapping=           local:remote or port. If remote is not specified local port is used
+  -r, --remote=                 username@remote.example.com or remote.example.com. If username is not specified the current $USER is used
+  -i, --identity=               private key to be used when establishing a connection to the remote (default: ~/.ssh/id_rsa)
+  -o, --known-hosts=            known hosts file (default: ~/.ssh/known_hosts)
+  -n, --protocol=[http|tcp]     network protocol to use when tunneling (default: tcp)
+  -c, --http-cache              HTTP only. Cache all succesful responses to GET requests to disk
+  -t, --http-cache-ttl=         HTTP only. Expressed in seconds. Length of time to keep successful responses in cache. Defaults to 12 hours
+  -s, --http-cache-serve-stale  HTTP only. Always return return a stale read from the cache. Handy if you need an offline mode
+  -v, --verbose
+
+Help Options:
+  -h, --help                    Show this help message
+```
 
 ## Setup passwordless access to your server
 ### Generate an SSH Key for liltunnel
@@ -48,7 +68,7 @@ that makes an HTTP request to 2009
 curl -v http://localhost:2009
 ```
 
-## CLI API
+## Usages
 ```
 liltunnel --local-host-port 1080 \
           --remote-host-port 1081 \
