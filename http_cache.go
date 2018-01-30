@@ -16,13 +16,12 @@ import (
 
 const (
 	defaultCacheFile = "liltunnel.httpcache.json"
-	defaultTTL       = 12 * time.Hour // Cache for a workday
 	headerCache      = "X-Liltunnel-Cache"
 	cacheHit         = "hit"
 	cacheMiss        = "miss"
 )
 
-func newHTTPCache(cacheFile string, l logger) (*cache, error) {
+func newHTTPCache(cacheFile string, ttl time.Duration, l logger) (*cache, error) {
 	if cacheFile == "" {
 		curr, err := user.Current()
 		if err != nil {
@@ -49,7 +48,7 @@ func newHTTPCache(cacheFile string, l logger) (*cache, error) {
 		flushFile:     cacheFile,
 		responseCache: responseCache,
 		log:           l,
-		ttl:           defaultTTL,
+		ttl:           ttl,
 		m:             new(sync.Mutex),
 	}
 
