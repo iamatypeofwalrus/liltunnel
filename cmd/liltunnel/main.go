@@ -25,15 +25,15 @@ const (
 
 // options represents the raw cli options exposed to the user
 type options struct {
-	PortMapping         string `long:"port-mapping" short:"p" required:"true" description:"local:remote or port. If remote is not specified local port is used"`
-	Remote              string `long:"remote" short:"r" required:"true" description:"username@remote.example.com or remote.example.com. If username is not specified the current $USER is used"`
-	SSHKeyPath          string `long:"identity" short:"i" required:"true" description:"private key to be used when establishing a connection to the remote (default: ~/.ssh/id_rsa)"`
-	KnownHostsPath      string `long:"known-hosts" short:"o" required:"false" description:"known hosts file (default: ~/.ssh/known_hosts)"`
-	Protocol            string `long:"protocol" short:"n" required:"false" description:"network protocol to use when tunneling" default:"tcp" choice:"http" choice:"tcp"`
-	HTTPCache           bool   `long:"http-cache" short:"c" description:"HTTP only. Cache all succesful responses to GET requests to disk"`
-	HTTPCacheTTL        int    `long:"http-cache-ttl" short:"t" description:"HTTP only. Expressed in seconds. Length of time to keep successful responses in cache. Defaults to 12 hours"`
-	HTTPCacheServeStale bool   `long:"http-cache-serve-stale" short:"s" description:"HTTP only. Always return return a stale read from the cache. Handy if you need an offline mode"`
-	Verbose             bool   `long:"verbose" short:"v"`
+	PortMapping         string        `long:"port-mapping" short:"p" required:"true" description:"local:remote or port. If remote is not specified local port is used"`
+	Remote              string        `long:"remote" short:"r" required:"true" description:"username@remote.example.com or remote.example.com. If username is not specified the current $USER is used"`
+	SSHKeyPath          string        `long:"identity" short:"i" required:"true" description:"private key to be used when establishing a connection to the remote (default: ~/.ssh/id_rsa)"`
+	KnownHostsPath      string        `long:"known-hosts" short:"o" required:"false" description:"known hosts file (default: ~/.ssh/known_hosts)"`
+	Protocol            string        `long:"protocol" short:"n" required:"false" description:"network protocol to use when tunneling" default:"tcp" choice:"http" choice:"tcp"`
+	HTTPCache           bool          `long:"http-cache" short:"c" description:"HTTP only. Cache all succesful responses to GET requests to disk"`
+	HTTPCacheTTL        time.Duration `long:"http-cache-ttl" short:"t" description:"HTTP only. Expressed in seconds. Length of time to keep successful responses in cache. Defaults to 12 hours"`
+	HTTPCacheServeStale bool          `long:"http-cache-serve-stale" short:"s" description:"HTTP only. Always return return a stale read from the cache. Handy if you need an offline mode"`
+	Verbose             bool          `long:"verbose" short:"v"`
 }
 
 // config holds all of the parsed and default values sanely set from the options
@@ -166,7 +166,7 @@ func newConf() (config, error) {
 	}
 
 	conf.protocol = opts.Protocol
-	if conf.protocol == protocolTCP && (opts.HTTPCache || opts.HTTPCacheTTL != 0) || opts.HTTPCacheServeStale) {
+	if conf.protocol == protocolTCP && (opts.HTTPCache || opts.HTTPCacheTTL != 0 || opts.HTTPCacheServeStale) {
 		return conf, errors.New("protocol TCP does not accept arguments http-cache, http-cache-ttl, http-cache-serve-stale")
 	}
 
@@ -176,7 +176,7 @@ func newConf() (config, error) {
 		conf.httpCacheServeStale = opts.HTTPCacheServeStale
 	}
 
-	if conf.httpCache && conf.httpCacheTTL == 0 * time.Duration {
+	if conf.httpCache && conf.httpCacheTTL == 0*time.Nanosecond {
 		conf.httpCacheTTL = defaultHTTPCacheTTL
 	}
 
