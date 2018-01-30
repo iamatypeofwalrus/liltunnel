@@ -65,6 +65,7 @@ func (h *httpTunnel) Tunnel() error {
 		c, err := newHTTPCache(
 			"",
 			h.cacheTTL,
+			h.cacheServeStale,
 			h.log,
 		)
 		if err != nil {

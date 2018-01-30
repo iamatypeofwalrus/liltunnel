@@ -21,7 +21,7 @@ const (
 	cacheMiss        = "miss"
 )
 
-func newHTTPCache(cacheFile string, ttl time.Duration, l logger) (*cache, error) {
+func newHTTPCache(cacheFile string, ttl time.Duration, serveStale bool, l logger) (*cache, error) {
 	if cacheFile == "" {
 		curr, err := user.Current()
 		if err != nil {
@@ -50,6 +50,7 @@ func newHTTPCache(cacheFile string, ttl time.Duration, l logger) (*cache, error)
 		log:           l,
 		ttl:           ttl,
 		m:             new(sync.Mutex),
+		serveStale:    serveStale,
 	}
 
 	return cc, nil
