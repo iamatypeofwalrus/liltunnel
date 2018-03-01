@@ -93,7 +93,12 @@ func main() {
 		)
 	} else {
 		l.Printf("initalizing tcp tunnler")
-		t, err = liltunnel.NewTCPTunneler(d, ":2009", ":2009", l)
+		t, err = liltunnel.NewTCPTunneler(
+			d,
+			conf.localPort,
+			conf.remotePort,
+			l,
+		)
 	}
 
 	if tunnelErr != nil {
